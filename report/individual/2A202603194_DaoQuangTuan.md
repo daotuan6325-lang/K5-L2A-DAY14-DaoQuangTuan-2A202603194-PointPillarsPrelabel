@@ -1,6 +1,5 @@
 # Báo cáo Day 14 — Dao Quang Tuan — 2A202603194
 
-
 - Mã học viên dùng với `--student`: `194`
 - `seed_tag` trong `frames_A.txt`: `393590736f`
 
@@ -22,10 +21,10 @@ Ghi **trước** khi chạy `scripts/pp_sweep.py`, rồi commit và push ngay (l
 
 ## 2. Tập A: sửa tay và tune
 
-| Cấu hình | Xóa | Thêm | Sửa | Chi phí |
-|---|---:|---:|---:|---:|
-| Gốc | 22 | 3 | 0 | 9.6 |
-| `best_config.json` | 20 | 3 | 0 | 9.0 |
+| Cấu hình           | Xóa | Thêm | Sửa | Chi phí |
+| ------------------ | --: | ---: | --: | ------: |
+| Gốc                |  22 |    3 |   0 |     9.6 |
+| `best_config.json` |  20 |    3 |   0 |     9.0 |
 
 Số đo gốc từ `scripts/pp_prelabel.py --frames d14_194/frames_A.txt --gt d14_194/ref_A.json`: GT 68, dự đoán 87, khớp 65 (s02f27: xóa 7 thêm 1 → 3.1; s03f31: xóa 9 thêm 1 → 3.7; s05f16: xóa 6 thêm 1 → 2.8).
 
@@ -42,18 +41,19 @@ Số đo gốc từ `scripts/pp_prelabel.py --frames d14_194/frames_A.txt --gt d
 - Tham số đã đổi trong `best_config.json`: `min_points: 0 → 5`. `score_thr` giữ 0.1 (mặc định). Sweep lưới `score_thr ∈ {0.1, 0.2, 0.3, 0.4, 0.5}` × `min_points ∈ {0, 5, 10}` = 15 cấu hình × 3 frame, chạy 60 s trên CPU (log `out/logs/sweep_A.log`). Với `best_config.json`: GT 68, dự đoán 85, khớp 65.
 - Kết quả sweep chính (đủ ở `d14_194/sweep.csv`):
 
-  | `score_thr` | `min_points` | Xóa | Thêm | Chi phí |
-  |---:|---:|---:|---:|---:|
-  | 0.1 / 0.2 | 5 | 20 | 3 | **9.0** |
-  | 0.1 / 0.2 | 0 | 22 | 3 | 9.6 |
-  | 0.1 / 0.2 | 10 | 20 | 7 | 13.0 |
-  | 0.3 | 0 / 5 / 10 | 18 / 16 / 16 | 13 / 13 / 16 | 18.4 / 17.8 / 20.8 |
-  | 0.4 | 0 / 5 / 10 | 14 / 13 / 13 | 29 / 29 / 30 | 33.2 / 32.9 / 33.9 |
-  | 0.5 | 0 / 5 / 10 | 5 | 39 | 40.5 |
+  | `score_thr` | `min_points` |          Xóa |         Thêm |            Chi phí |
+  | ----------: | -----------: | -----------: | -----------: | -----------------: |
+  |   0.1 / 0.2 |            5 |           20 |            3 |            **9.0** |
+  |   0.1 / 0.2 |            0 |           22 |            3 |                9.6 |
+  |   0.1 / 0.2 |           10 |           20 |            7 |               13.0 |
+  |         0.3 |   0 / 5 / 10 | 18 / 16 / 16 | 13 / 13 / 16 | 18.4 / 17.8 / 20.8 |
+  |         0.4 |   0 / 5 / 10 | 14 / 13 / 13 | 29 / 29 / 30 | 33.2 / 32.9 / 33.9 |
+  |         0.5 |   0 / 5 / 10 |            5 |           39 |               40.5 |
 
   Sửa = 0 ở mọi cấu hình.
 
   `score_thr` 0.1 và 0.2 cho kết quả giống hệt vì box có score thấp nhất trong `pred_A.json` là 0.216. Sweep chọn 0.1 (dòng đầu trong các dòng hòa), đúng bằng mặc định.
+
 - Kết quả leave-one-out (dán các dòng `scripts/pp_sweep.py` in ra):
 
   ```
@@ -61,15 +61,14 @@ Số đo gốc từ `scripts/pp_prelabel.py --frames d14_194/frames_A.txt --gt d
   s03f31: cấu hình chọn {'score_thr': '0.1', 'min_points': '5'} → 3.7 (tốt nhất có thể 3.7)
   s05f16: cấu hình chọn {'score_thr': '0.1', 'min_points': '5'} → 2.2 (tốt nhất có thể 2.2)
   ```
+
 - Cấu hình có ổn định trên từng frame không? Có: bỏ bất kỳ frame nào ra, 2 frame còn lại vẫn chọn cùng cấu hình, và cấu hình đó đạt chi phí tốt nhất có thể trên frame bị bỏ ra. Nhưng toàn bộ mức giảm (0.6) đến từ **một frame** (s05f16, 2 box Car 1–2 điểm), còn s02f27 và s03f31 không đổi. Bằng chứng ổn định vì vậy còn mỏng. Vẫn chọn vì `min_points=5` không làm mất box đúng nào trên tập A (số "thêm" giữ nguyên 3) và có lý do vật lý rõ ràng: hộp gần như không có điểm LiDAR thì không phải vật thật. `min_points=10` đã làm mất 4 box đúng, nên ngưỡng 5 là giới hạn an toàn. Hai tham số này không xử lý được lỗi lớn nhất (Cyclist không người lái có score và số điểm lẫn với box đúng): `score_thr=0.3` bớt được 6 box xóa nhưng mất thêm 10 box đúng.
 
 ## 3. Trước/sau (bước 8)
 
-> Trợ lý AI soạn mục này từ output thật của `scripts/pp_compare.py` (log `out/logs/compare_A.log`); xem khai báo ở Phụ lục C.
-
 ![so sánh s05f16](../../d14_194/compare/s05f16.jpg)
 
-*s05f16, trái: cấu hình gốc (xóa 6, thêm 1 → 2.8); phải: `best_config.json` (xóa 4, thêm 1 → 2.2). Xanh lá = đúng, đỏ = thừa (xóa), xanh dương = bị sót (thêm).*
+_s05f16, trái: cấu hình gốc (xóa 6, thêm 1 → 2.8); phải: `best_config.json` (xóa 4, thêm 1 → 2.2). Xanh lá = đúng, đỏ = thừa (xóa), xanh dương = bị sót (thêm)._
 
 - `scripts/pp_compare.py` báo **giảm 6%** công sửa trên tập A (9.6 → 9.0, tham số đổi: `min_points: 0 → 5`). Theo frame: s02f27 3.1 → 3.1, s03f31 3.7 → 3.7, s05f16 2.8 → 2.2. Đây là chi phí theo công thức trên 3 frame tune (cũng là 3 frame dùng để chọn cấu hình), không phải thời gian sửa thật. Số đo trên dữ liệu mới ở mục 4.
 - Dự đoán ở mục 1 đúng hay sai? **Đúng về tham số và cơ chế, sai về con số tương đối.**
@@ -81,10 +80,10 @@ Số đo gốc từ `scripts/pp_prelabel.py --frames d14_194/frames_A.txt --gt d
 
 Số đo từ `scripts/pp_prelabel.py --frames d14_194/frames_B.txt --config d14_194/best_config.json --gt d14_194/ref_B.json` (log `out/logs/score_B.log`):
 
-| Cấu hình | GT | Pred | Khớp | Xóa | Thêm | Sửa | Chi phí |
-|---|---:|---:|---:|---:|---:|---:|---:|
-| `best_config.json` | 275 | 379 | 265 | 114 | 10 | 0 | **44.2** |
-| Gốc (đối chứng, `out/logs/score_B_default.log`) | 275 | 387 | 265 | 122 | 10 | 0 | 46.6 |
+| Cấu hình                                        |  GT | Pred | Khớp | Xóa | Thêm | Sửa |  Chi phí |
+| ----------------------------------------------- | --: | ---: | ---: | --: | ---: | --: | -------: |
+| `best_config.json`                              | 275 |  379 |  265 | 114 |   10 |   0 | **44.2** |
+| Gốc (đối chứng, `out/logs/score_B_default.log`) | 275 |  387 |  265 | 122 |   10 |   0 |     46.6 |
 
 - `best_config.json` giảm 5% so với cấu hình gốc trên 12 frame chưa dùng để tune (46.6 → 44.2, bớt 8 box xóa, không mất box đúng). Mức này gần bằng 6% ở tập A, nên cấu hình chuyển sang dữ liệu mới mà không mất tác dụng, nhưng tác dụng nhỏ.
 - Loại box tốn công sửa nhất ở tập B: **Cyclist thừa.**
@@ -104,8 +103,6 @@ Số đo từ `scripts/pp_prelabel.py --frames d14_194/frames_B.txt --config d14
 - **Phần lớn chỉnh sửa trên CVAT do trợ lý AI thực hiện qua API theo yêu cầu của tôi** (Phụ lục C), dựa trên ảnh camera và cụm điểm LiDAR. Các box AI thêm ở tập B mang `note = AI_DRAFT`. Khoảng 20 Cyclist bị che/ở xa được giữ vì không kết luận được; nếu không có người lái thì chi phí B sẽ cao hơn khoảng 6 điểm.
 - **Không chỉnh hình học box đã khớp** (sửa = 0 ở cả A và B). Box Car nhỏ hơn Bảng 4.3 vẫn giữ kích thước của model, nên "sửa" có thể bị đếm thiếu.
 - **`ref_A.json` đổi sau commit 5b** (mục 2): dự đoán ở mục 1 dựa trên bản 1, nên con số tương đối ở mục 3 không so trực tiếp được.
-
-> ✍️ Phần dưới là phụ lục kỹ thuật, lấy từ code và số đo thực tế. Ký hiệu ⏳ = chờ số đo; ✍️ = học viên tự viết/xác nhận.
 
 ## Phụ lục A. Pipeline
 
@@ -127,37 +124,33 @@ Tái lập đã kiểm: chạy lại bước 2 trên tập A cho kết quả tr�
 
 ## Phụ lục C. Công cụ hỗ trợ ngoài pre-label của lab (khai báo)
 
-✍️ Xác nhận công cụ nào bạn thực sự đã dùng, xóa dòng không dùng:
+Tôi dùng trợ lý AI **Claude Code** trong bài này:
 
-- `tools/d14_assist.py bev`: vẽ ảnh BEV có số `pp_id` và đánh dấu "M#" ở cụm điểm không có box (ứng viên bị sót). Chỉ là gợi ý. Mọi box đều do tôi xác nhận bằng camera rồi vẽ/sửa tay.
-- `tools/d14_assist.py notes`: ghi gợi ý vào thuộc tính `note` của cuboid. Không đổi tọa độ, kích thước, lớp.
-- `tools/d14_camserver.py` + `tools/cvat-d14-cameras.user.js`: chiếu cuboid đã Save lên 7 camera để kiểm. Chỉ đọc, không ghi nhãn.
-- `tools/d14_draft.py`: tìm cụm điểm LiDAR chưa có box, chiếu lên camera để lọc. Trên tập A, 32 ứng viên chỉ có 1 vật thật (xe ben ở s05f16, cách 28.6 m); phần còn lại là nhà chờ, hàng cây, biển quảng cáo. Box này được đẩy lên CVAT dưới dạng nháp (`note = AI_DRAFT - can kiem`, lớp Truck). Tôi đã kiểm và chỉnh box này trên CVAT (dời tâm từ (10.91, −26.42) sang (11.61, −28.69), xoay yaw 1.452 → 1.560) rồi mới xuất `ref_A.json`.
-- Kiểm tra QA tự động trên tập A (Claude Code): so kích thước với Bảng 4.3, đếm điểm LiDAR trong hộp, chiếu hộp nghi vấn lên camera. Theo yêu cầu của tôi, công cụ đã sửa trực tiếp trên CVAT 4 lỗi thấy rõ trên camera: xóa box Car bao chính xe ghi dữ liệu (s03f31), xóa box Car trong bụi cây cách 47.9 m (s05f16), xóa box Car trùng cabin xe ben (s05f16), đổi chiều rộng Bus từ 3.11 m thành 2.55 m (s03f31). Lần 2 sửa thêm 2 box ở s02f27: xóa Cyclist trên hàng rào (camera không có xe), thu Pedestrian ở nhà chờ từ 2.13 m xuống 0.6 × 0.6 × 1.7 m theo cụm điểm của người và hạ đáy sát mặt đường. Đã sao lưu trước mỗi lần sửa (`out/cvat_backup_D14-194-A_truoc_suaQA*_*.json`). ✍️ Tôi đã mở CVAT kiểm lại các thay đổi này.
-- Trợ lý AI (Claude Code): chạy lệnh, kiểm tra CVAT/dữ liệu, sửa một phần nhãn tập A qua API theo yêu cầu của tôi (liệt kê đầy đủ ở hai dòng trên), điền bảng số liệu, viết mục 5 và các phụ lục kỹ thuật. Theo yêu cầu của tôi, trợ lý AI cũng soạn dự đoán 5b (mục 1, chỉ dựa trên số liệu tập A ở cấu hình gốc, trước khi chạy sweep) và bản nháp đối chiếu ở mục 3. Tôi đã duyệt mục 1 trước khi commit `5b: dự đoán` (`9993409`, push lúc 2026-11-27 12:08 +07:00); sweep chạy sau đó, lúc 12:09.
-- Trợ lý AI cũng chạy sweep, `pred_B.json`, tạo task `D14-194-B` (CVAT task 33, 12 frame, 379 cuboid), ghi gợi ý vào thuộc tính `note` của task B (không đổi hình học; sao lưu `out/cvat_backup_D14-194-B.json`) và tạo ảnh BEV gợi ý `out/assist_B/`.
-- **Sửa tập B trên CVAT bằng API (theo yêu cầu của tôi, 2026-11-27).** Trợ lý AI chiếu từng box và từng cụm điểm chưa có box lên 7 camera (ảnh ghép `out/sheets_B/`), rồi sửa. Log đầy đủ ở `out/edit_B/apply_B.log`, script ở `out/edit_B/`; sao lưu trước mỗi lần sửa ở `out/cvat_backup_D14-194-B_truoc_*.json`.
-  - Xóa 12 box Car bao chính xe ghi dữ liệu (tâm ≤ 1 m từ LiDAR, mỗi frame 1 box).
-  - Xóa 17 box ít điểm LiDAR mà camera cho thấy là bụi cây, hàng rào, bãi xe đạp, hoặc box Car đè lên xe buýt.
-  - Xóa 85 box Cyclist mà camera không thấy người lái (bụi cây, gốc cây, nhà chờ, xe đạp dựng bên đường). Theo guideline Day 13, xe hai bánh không có người thì không vẽ. Giữ 27 box Cyclist: 7 box thấy rõ người lái, các box còn lại bị xe khác che hoặc quá xa để kết luận.
-  - Thêm 10 box (`note = AI_DRAFT - can kiem: ...`): 5 Bus (s01f12, s02f01, s03f53 ×2, s04f28), 1 Car (SUV ở s03f21), 4 Pedestrian (s03f21 ×3, s01f54). Kích thước theo Bảng 4.3, vị trí theo cụm điểm LiDAR, đã chiếu lại lên camera để kiểm; 3 box được tinh chỉnh thêm theo lưới điểm (xe buýt s01f12, SUV s03f21, người s01f54).
-  - ✍️ Tôi đã mở CVAT kiểm lại các thay đổi này trước khi xuất `ref_B.json`.
-- **Sửa lại tập A sau khi gán B (theo yêu cầu của tôi, 2026-11-27).** Trợ lý AI xóa 15 Cyclist không người lái trên task `D14-194-A` (s02f27 `pp_id` 6, 8, 9, 21; s03f31 `pp_id` 5, 11, 12, 13, 14, 21, 27, 29; s05f16 `pp_id` 11, 18, 28). Giữ 3 box mơ hồ (s03f31 `pp_id` 6; s05f16 `pp_id` 13, 20). Sao lưu `out/cvat_backup_D14-194-A_truoc_xoaCyclist_*.json`, log `out/edit_A/apply_A.log`. Sau đó xuất lại `ref_A.json`, chạy lại sweep, compare; mục 1 không sửa. ✍️ Tôi đã mở CVAT kiểm lại.
+- **Đọc project và phân tích:** đọc code, đề bài và rubric; chỉ ra các bước dễ mất điểm (commit mục 1 trước sweep, `ref_*` không được trùng `pred_*`, sai lớp/kích thước, khai báo trung thực).
+- **Hỗ trợ viết báo cáo:** soạn dự đoán 5b ở mục 1 (tôi duyệt rồi mới commit `9993409`, trước khi chạy sweep), điền số liệu và soạn mục 2–5 cùng các phụ lục từ output thật của script.
+- **Chạy lệnh và sửa nhãn trên CVAT qua API, theo yêu cầu của tôi**, sau khi chiếu box lên camera để kiểm:
+  - chạy `pp_prelabel`, `pp_sweep`, `pp_compare`, `vf_cvat`;
+  - tập A: xóa box chính xe ghi dữ liệu, box trong bụi cây/đè cabin, 15 Cyclist không người lái; chỉnh kích thước Bus và Pedestrian;
+  - tập B: xóa 114 box (12 box chính xe ghi dữ liệu, 17 box bụi cây/hàng rào, 85 Cyclist không người lái), thêm 10 box (`note = AI_DRAFT`).
+  - Log và sao lưu ở `out/edit_A/`, `out/edit_B/`, `out/cvat_backup_*.json`.
+- Script hỗ trợ trong `tools/` (`d14_assist.py`, `d14_draft.py`, `d14_camserver.py`, `cvat-d14-cameras.user.js`): vẽ BEV gợi ý, tìm cụm điểm chưa có box, chiếu cuboid lên camera.
+
+Tôi đã mở CVAT kiểm lại nhãn tập B trước khi nộp.
 
 ## Phụ lục D. Bảng so sánh A/B
 
-| Tập | Cấu hình | GT (ref) | Pred | Khớp | Xóa | Thêm | Sửa | Chi phí |
-|---|---|---:|---:|---:|---:|---:|---:|---:|
-| A | Gốc | 68 | 87 | 65 | 22 | 3 | 0 | 9.6 |
-| A | `best_config.json` | 68 | 85 | 65 | 20 | 3 | 0 | 9.0 |
-| B | Gốc (đối chứng) | 275 | 387 | 265 | 122 | 10 | 0 | 46.6 |
-| B | `best_config.json` | 275 | 379 | 265 | 114 | 10 | 0 | 44.2 |
+| Tập | Cấu hình           | GT (ref) | Pred | Khớp | Xóa | Thêm | Sửa | Chi phí |
+| --- | ------------------ | -------: | ---: | ---: | --: | ---: | --: | ------: |
+| A   | Gốc                |       68 |   87 |   65 |  22 |    3 |   0 |     9.6 |
+| A   | `best_config.json` |       68 |   85 |   65 |  20 |    3 |   0 |     9.0 |
+| B   | Gốc (đối chứng)    |      275 |  387 |  265 | 122 |   10 |   0 |    46.6 |
+| B   | `best_config.json` |      275 |  379 |  265 | 114 |   10 |   0 |    44.2 |
 
 Phân tích sai số theo lớp (cấu hình gốc, trong 50 m):
 
-| Tập | Xóa Cyclist | Xóa Car | Thêm Bus/Truck | Thêm Pedestrian | Thêm Car |
-|---|---:|---:|---:|---:|---:|
-| A | 18 | 4 | 2 | 1 | 0 |
-| B | 88 (`best_config`) | 26 (`best_config`) | 5 | 4 | 1 |
+| Tập |        Xóa Cyclist |            Xóa Car | Thêm Bus/Truck | Thêm Pedestrian | Thêm Car |
+| --- | -----------------: | -----------------: | -------------: | --------------: | -------: |
+| A   |                 18 |                  4 |              2 |               1 |        0 |
+| B   | 88 (`best_config`) | 26 (`best_config`) |              5 |               4 |        1 |
 
 Box xóa nhiều nhất là Cyclist; box thêm nhiều nhất là xe lớn (Bus/Truck), lớp model KITTI không có. Không có box sửa ở cả hai tập.
